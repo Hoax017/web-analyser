@@ -4,7 +4,11 @@ import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { formatBytes, prettyBody } from "@/lib/format";
+import { parseJson } from "@/lib/json";
+import { cn } from "@/lib/utils";
 import type { BodyEncoding, HttpHeader, QueryParam } from "@/types/domain";
+
+import { JsonTree } from "./JsonTree";
 
 /** Above this size, only a preview is rendered to keep the DOM light. */
 const PREVIEW_LIMIT = 200_000;
@@ -71,7 +75,12 @@ export function BodyViewer({
   size: number | null;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const formatted = useMemo(() => (body !== null && encoding === "utf8" ? prettyBody(body) : null), [body, encoding]);
+  const [mode, setMode] = useState<"tree" | "raw">("tree");
+  const json = useMemo(() => (body !== null && encoding === "utf8" ? parseJson(body) : undefined), [body, encoding]);
+  const formatted = useMemo(
+    () => (json !== undefined ? JSON.stringify(json, null, 2) : body !== null && encoding === "utf8" ? prettyBody(body).text : null),
+    [json, body, encoding],
+  );
 
   if (body === null || encoding === "none") {
     return (
@@ -88,21 +97,43 @@ export function BodyViewer({
     return <p className="text-sm text-muted-foreground">Contenu binaire ({mimeType ?? "type inconnu"}, {formatBytes(size)})</p>;
   }
 
-  const text = formatted?.text ?? body;
+  const text = formatted ?? body;
+  const modeToggle =
+    json === undefined ? null : (
+      <div className="flex shrink-0 rounded-md border border-border text-xs">
+        {(["tree", "raw"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            className={cn("px-2 py-1", mode === m ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}
+            onClick={() => setMode(m)}
+          >
+            {m === "tree" ? "Arbre" : "Brut"}
+          </button>
+        ))}
+      </div>
+    );
+  if (json !== undefined && mode === "tree") {
+    return <JsonTree value={json} toolbar={<>{modeToggle}<CopyButton text={text} /></>} />;
+  }
+
   const truncated = !expanded && text.length > PREVIEW_LIMIT;
   return (
-    <div className="relative">
-      <div className="absolute right-2 top-2">
-        <CopyButton text={text} />
+    <div className="flex flex-col gap-2">
+      {modeToggle && <div className="flex">{modeToggle}</div>}
+      <div className="relative">
+        <div className="absolute right-2 top-2">
+          <CopyButton text={text} />
+        </div>
+        <pre className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/30 p-3 pr-10 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all select-text">
+          {truncated ? text.slice(0, PREVIEW_LIMIT) : text}
+        </pre>
+        {truncated && (
+          <Button variant="link" size="sm" className="mt-1" onClick={() => setExpanded(true)}>
+            Afficher tout ({formatBytes(text.length)})
+          </Button>
+        )}
       </div>
-      <pre className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/30 p-3 pr-10 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all select-text">
-        {truncated ? text.slice(0, PREVIEW_LIMIT) : text}
-      </pre>
-      {truncated && (
-        <Button variant="link" size="sm" className="mt-1" onClick={() => setExpanded(true)}>
-          Afficher tout ({formatBytes(text.length)})
-        </Button>
-      )}
     </div>
   );
 }
