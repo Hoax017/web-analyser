@@ -15,7 +15,24 @@ permissions:
   contents: write
 
 jobs:
+  # Created once up-front: parallel build jobs would otherwise race and create duplicate drafts.
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    outputs:
+      release-id: ${{ steps.release.outputs.id }}
+    steps:
+      - id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+            --title "Web Analyser $GITHUB_REF_NAME" --notes "Voir le README pour l'installation."
+          echo "id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq "[.[] | select(.tag_name == \"$GITHUB_REF_NAME\")][0].id")" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: create-release
+    if: ${{ !cancelled() && needs.create-release.result != 'failure' }}
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
@@ -75,11 +92,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: ${{ matrix.args }}
-          # On a version tag, attach the bundles to a draft GitHub release.
-          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
-          releaseName: Web Analyser ${{ github.ref_name }}
-          releaseDraft: true
-          prerelease: false
+          # On a version tag, attach the bundles to the draft release created above.
+          releaseId: ${{ needs.create-release.outputs.release-id }}
 
       - name: Run Rust tests
         if: runner.os == 'Linux'
