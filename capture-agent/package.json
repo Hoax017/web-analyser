@@ -1,0 +1,5 @@
+{
+  "name": "web-analyser-capture-agent",
+  "private": true,
+  "type": "module"
+}

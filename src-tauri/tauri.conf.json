@@ -26,6 +26,11 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": {
+      "../capture-agent/dist/": "capture-agent/",
+      "../capture-agent/package.json": "capture-agent/package.json",
+      "../node_modules/playwright-core/": "capture-agent/node_modules/playwright-core/"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -44,6 +44,18 @@ React Flow, agent Playwright pilotant Chrome. Toutes les données restent en loc
 > uniquement dans le dossier de données de l'application (`%APPDATA%\dev.webanalyser.app` sous Windows) et ne
 > sont jamais envoyées ailleurs.
 
+## Téléchargement
+
+La CI GitHub Actions ([`build.yml`](.github/workflows/build.yml)) produit à chaque push les installeurs
+macOS (`.dmg`, Apple Silicon et Intel), Windows (`-setup.exe` NSIS et `.msi`) et Linux (`.AppImage`, `.deb`,
+`.rpm`), disponibles en artefacts du workflow. Pousser un tag `v*` (ex. `git tag v0.1.0 && git push --tags`)
+crée un brouillon de release GitHub avec ces fichiers.
+
+- **Node.js ≥ 20** et **Google Chrome** doivent être installés : l'agent de capture (embarqué dans l'app) est
+  exécuté avec le `node` du système (surchargeable via la variable `WEB_ANALYSER_NODE`).
+- Les binaires ne sont pas signés : sur macOS, clic droit → Ouvrir (ou `xattr -cr "/Applications/Web Analyser.app"`) ;
+  sur Windows, SmartScreen → « Informations complémentaires » → « Exécuter quand même ».
+
 ## Prérequis
 
 - Node.js ≥ 20, Rust stable, Google Chrome installé.
@@ -97,6 +109,6 @@ src/
 
 ## Pistes suivantes
 
-- Packager l'agent (sidecar Node ou binaire) pour les builds de production.
+- Embarquer Node.js (sidecar) pour ne plus dépendre d'une installation système.
 - Filtres (méthode, statut, domaine), export HAR.
 - Corrélation assistée par IA en complément du moteur heuristique.
