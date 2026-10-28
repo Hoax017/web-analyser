@@ -1,3 +1,5 @@
+import { messages } from "@/i18n";
+
 /** Any value produced by `JSON.parse`. */
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 export type JsonSegment = string | number;
@@ -56,7 +58,7 @@ export function formatPath(path: JsonPath, format: PathFormat): string {
   switch (format) {
     case "js": {
       const joined = parts.join("");
-      return joined.startsWith(".") ? joined.slice(1) : joined || "(racine)";
+      return joined.startsWith(".") ? joined.slice(1) : joined || messages().json.root;
     }
     case "jsonpath":
       return `$${parts.join("")}`;

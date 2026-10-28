@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { BrowserSettingsDialog } from "@/features/settings/BrowserSettingsDialog";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { messages, useT } from "@/i18n";
+import { formatNumber } from "@/lib/format";
 import { errorMessage } from "@/lib/tauri";
 import { useCaptureStore } from "@/stores/captureStore";
 import { useGraphStore } from "@/stores/graphStore";
@@ -19,10 +21,11 @@ import type { Project } from "@/types/domain";
 import { DisplayFilterDialog } from "./DisplayFilterDialog";
 
 export function TopBar({ project, onHome }: { project: Project; onHome: () => void }) {
+  const t = useT();
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-3">
       <Button variant="secondary" onClick={onHome}>
-        <Home /> Accueil
+        <Home /> {t.topBar.home}
       </Button>
       <span className="max-w-48 truncate text-sm font-semibold" title={project.name}>
         {project.name}
@@ -32,7 +35,7 @@ export function TopBar({ project, onHome }: { project: Project; onHome: () => vo
       <RecomputeButton project={project} />
       <BrowserSettingsDialog
         trigger={
-          <Button variant="ghost" size="icon" title="Réglages du navigateur de capture">
+          <Button variant="ghost" size="icon" title={t.home.browserButtonTitle}>
             <Settings />
           </Button>
         }
@@ -43,6 +46,7 @@ export function TopBar({ project, onHome }: { project: Project; onHome: () => vo
 }
 
 function GlobalSearch() {
+  const t = useT();
   const setQuery = useRequestListStore((s) => s.setQuery);
   const currentQuery = useRequestListStore((s) => s.query);
   const [value, setValue] = useState(currentQuery);
@@ -57,19 +61,19 @@ function GlobalSearch() {
   return (
     <div className="mx-auto flex w-full max-w-2xl items-center gap-3">
     <div className="relative min-w-0 flex-1">
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Rechercher dans les URLs, les valeurs de requête et de réponse…"
-        className="pl-9 pr-9"
+        placeholder={t.topBar.searchPlaceholder}
+        className="ps-9 pe-9"
       />
       {value && (
         <button
           type="button"
-          aria-label="Effacer"
+          aria-label={t.common.clear}
           onClick={() => setValue("")}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
         >
           <X className="size-4" />
         </button>
@@ -77,7 +81,7 @@ function GlobalSearch() {
     </div>
       <label
         className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-        title="Masquer dans le graphique les blocs qui ne correspondent pas à la recherche"
+        title={t.topBar.filterGraphTitle}
       >
         <input
           type="checkbox"
@@ -85,13 +89,14 @@ function GlobalSearch() {
           checked={graphFilter}
           onChange={(e) => setGraphFilter(e.target.checked)}
         />
-        Filtrer le graphe
+        {t.topBar.filterGraph}
       </label>
     </div>
   );
 }
 
 function RecomputeButton({ project }: { project: Project }) {
+  const t = useT();
   const status = useCaptureStore((s) => s.status);
   const [busy, setBusy] = useState(false);
   const capturingHere = status.state !== "idle" && status.projectId === project.id;
@@ -100,7 +105,7 @@ function RecomputeButton({ project }: { project: Project }) {
     setBusy(true);
     try {
       useGraphStore.getState().applyGraph(await graphApi.recompute(project.id));
-      toast.success("Analyse des liens terminée");
+      toast.success(messages().topBar.recomputeDone);
     } catch (error: unknown) {
       toast.error(errorMessage(error));
     } finally {
@@ -112,7 +117,7 @@ function RecomputeButton({ project }: { project: Project }) {
     <Button
       variant="ghost"
       size="icon"
-      title={capturingHere ? "Arrêtez la capture pour relancer l'analyse" : "Relancer la détection des liens"}
+      title={capturingHere ? t.topBar.recomputeBlocked : t.topBar.recompute}
       disabled={busy || capturingHere}
       onClick={() => void run()}
     >
@@ -122,6 +127,7 @@ function RecomputeButton({ project }: { project: Project }) {
 }
 
 function CaptureControls({ project }: { project: Project }) {
+  const t = useT();
   const status = useCaptureStore((s) => s.status);
   const [busy, setBusy] = useState(false);
   const isHere = status.projectId === project.id;
@@ -143,32 +149,32 @@ function CaptureControls({ project }: { project: Project }) {
   let primary: ReactNode;
   if (elsewhere) {
     primary = (
-      <Button disabled title="Une capture est active sur un autre projet">
-        <Play /> Capture occupée
+      <Button disabled title={t.topBar.captureBusyTitle}>
+        <Play /> {t.topBar.captureBusy}
       </Button>
     );
   } else if (status.state === "starting") {
     primary = (
       <Button disabled>
-        <Loader2 className="animate-spin" /> Démarrage…
+        <Loader2 className="animate-spin" /> {t.topBar.starting}
       </Button>
     );
   } else if (status.state === "running") {
     primary = (
       <Button variant="secondary" disabled={busy} onClick={() => void act(captureApi.pause)}>
-        <Pause /> Mettre en pause
+        <Pause /> {t.topBar.pause}
       </Button>
     );
   } else if (status.state === "paused") {
     primary = (
       <Button disabled={busy} onClick={() => void act(captureApi.resume)}>
-        <Play /> Reprendre l'analyse
+        <Play /> {t.topBar.resume}
       </Button>
     );
   } else {
     primary = (
       <Button disabled={busy} onClick={() => void start()}>
-        <Play /> Reprendre l'analyse
+        <Play /> {t.topBar.resume}
       </Button>
     );
   }
@@ -178,12 +184,12 @@ function CaptureControls({ project }: { project: Project }) {
       {isHere && status.state !== "idle" && (
         <>
           <Badge tone={status.state === "running" ? "success" : "pending"} title={status.browserVersion ?? undefined}>
-            {status.state === "running" ? "● REC" : status.state === "paused" ? "PAUSE" : "…"} · {status.captured}
+            {status.state === "running" ? t.topBar.recording : status.state === "paused" ? t.topBar.paused : "…"} · {formatNumber(status.captured)}
           </Badge>
           <Button
             variant="ghost"
             size="icon"
-            title="Arrêter la capture (un Chrome connecté reste ouvert)"
+            title={t.topBar.stop}
             disabled={busy}
             onClick={() => void act(captureApi.stop)}
           >

@@ -20,6 +20,7 @@ import { Crosshair, Eye, GitFork, LayoutGrid, Network, Search, X } from "lucide-
 
 import { graphApi, requestsApi } from "@/api";
 import { toast } from "@/components/ui/toast";
+import { plural, useT, type Messages } from "@/i18n";
 import { errorMessage } from "@/lib/tauri";
 import { parseNodeId, requestNodeId, useGraphStore } from "@/stores/graphStore";
 import { useRequestListStore } from "@/stores/requestListStore";
@@ -53,13 +54,14 @@ interface ContextMenuState {
   y: number;
 }
 
-function nodeLabel(node: AppNode | undefined): string {
+function nodeLabel(node: AppNode | undefined, t: Messages): string {
   if (!node) return "";
-  if (node.type === "user") return node.data.label;
+  if (node.type === "user") return t.graph.user;
   return `${node.data.request.method} ${node.data.request.path}`;
 }
 
 function GraphCanvasInner() {
+  const t = useT();
   const projectId = useWorkspaceStore((s) => s.projectId);
   const openRequest = useWorkspaceStore((s) => s.openRequest);
   const requests = useGraphStore((s) => s.requests);
@@ -92,7 +94,7 @@ function GraphCanvasInner() {
     requestAnimationFrame(() => void fitView({ padding: 0.2, duration: 300 }));
   }, [loading, projectId, nodes.length, fitView]);
 
-  // --- "Voir à partir de…" focus mode -------------------------------------
+  // --- "View from…" focus mode -------------------------------------
   const [focusRoot, setFocusRoot] = useState<string | null>(null);
   const activeFocus = focusRoot !== null && derived.nodes.some((n) => n.id === focusRoot) ? focusRoot : null;
   const focusIds = useMemo(
@@ -319,29 +321,30 @@ function GraphCanvasInner() {
         <Panel
           position="top-left"
           className="max-w-[calc(100%-24rem)] truncate rounded-md border border-border bg-card/90 px-3 py-2 text-xs text-muted-foreground"
-          title="double-clic = détail · clic droit = options · glisser d'un point à un autre = nouveau lien · Suppr = supprimer"
+          title={t.graph.help}
         >
-          {shownNodes.length} blocs · {shownEdges.length} liens · double-clic = détail · clic droit = options · glisser d'un point à un autre = nouveau lien · Suppr = supprimer
+          {t.graph.stats({ blocks: plural(t.graph.blocks, shownNodes.length), links: plural(t.graph.links, shownEdges.length) })} ·{" "}
+          {t.graph.help}
         </Panel>
         <Panel position="top-right" className="flex gap-1.5">
-          <Button size="sm" variant="secondary" onClick={recenter} title="Recentrer le graphique">
-            <Crosshair /> Recentrer
+          <Button size="sm" variant="secondary" onClick={recenter} title={t.graph.recenterTitle}>
+            <Crosshair /> {t.graph.recenter}
           </Button>
           <Button
             size="sm"
             variant="secondary"
             onClick={arrangeInCircle}
-            title={activeFocus === null ? "Replacer tous les blocs en cercles concentriques" : "Replacer les blocs de cette vue en cercle"}
+            title={activeFocus === null ? t.graph.arrangeAllTitle : t.graph.arrangeFocusTitle}
           >
-            <LayoutGrid /> Réorganiser en cercle
+            <LayoutGrid /> {t.graph.arrange}
           </Button>
         </Panel>
         {matchIds !== null && (
           <Panel position="bottom-center" className="flex items-center gap-2 rounded-md border border-primary/40 bg-card/95 px-3 py-1.5 text-xs">
             <Search className="size-3.5 text-primary" />
             <span>
-              Recherche : {matchIds.size}/{shownRequestCount} blocs correspondent
-              {filtering ? " (les autres sont masqués)" : ""}
+              {t.graph.searchSummary({ matches: matchIds.size, total: shownRequestCount })}
+              {filtering ? t.graph.othersHidden : ""}
             </span>
           </Panel>
         )}
@@ -349,10 +352,13 @@ function GraphCanvasInner() {
           <Panel position="top-center" className="flex items-center gap-2 rounded-md border border-primary/40 bg-card/95 px-3 py-1.5 text-xs">
             <GitFork className="size-3.5 text-primary" />
             <span className="max-w-[360px] truncate">
-              Vue à partir de <span className="font-mono">{nodeLabel(nodes.find((n) => n.id === activeFocus))}</span>
+              {t.graph.viewFrom}{" "}
+              <span dir="ltr" className="font-mono">
+                {nodeLabel(nodes.find((n) => n.id === activeFocus), t)}
+              </span>
             </span>
             <Button size="sm" variant="ghost" className="h-6 px-2" onClick={showAll}>
-              <X /> Tout afficher
+              <X /> {t.graph.showAll}
             </Button>
           </Panel>
         )}
@@ -363,8 +369,7 @@ function GraphCanvasInner() {
           <div className="flex max-w-sm flex-col items-center gap-2 text-center text-muted-foreground">
             <Network className="size-10 opacity-40" />
             <p className="text-sm">
-              Aucun flux détecté pour l'instant. Naviguez sur le site analysé, ou épinglez une requête
-              depuis la liste pour l'ajouter au graphique.
+              {t.graph.empty}
             </p>
           </div>
         </div>
@@ -376,8 +381,8 @@ function GraphCanvasInner() {
             className="absolute z-50 min-w-[200px] rounded-md border border-border bg-popover p-1 text-sm shadow-lg"
             style={{ left: menu.x, top: menu.y }}
           >
-            <div className="truncate px-2 py-1 font-mono text-xs text-muted-foreground">
-              {nodeLabel(nodes.find((n) => n.id === menu.nodeId))}
+            <div dir="ltr" className="truncate px-2 py-1 text-start font-mono text-xs text-muted-foreground">
+              {nodeLabel(nodes.find((n) => n.id === menu.nodeId), t)}
             </div>
             <MenuItem
               onClick={() => {
@@ -385,7 +390,7 @@ function GraphCanvasInner() {
                 closeMenu();
               }}
             >
-              <GitFork className="size-4" /> Voir à partir de ce nœud
+              <GitFork className="size-4" /> {t.graph.showFromNode}
             </MenuItem>
             {parseNodeId(menu.nodeId)?.kind === "request" && (
               <MenuItem
@@ -395,7 +400,7 @@ function GraphCanvasInner() {
                   closeMenu();
                 }}
               >
-                <Eye className="size-4" /> Ouvrir le détail
+                <Eye className="size-4" /> {t.graph.openDetail}
               </MenuItem>
             )}
             {activeFocus !== null && (
@@ -405,7 +410,7 @@ function GraphCanvasInner() {
                   closeMenu();
                 }}
               >
-                <Network className="size-4" /> Tout afficher
+                <Network className="size-4" /> {t.graph.showAll}
               </MenuItem>
             )}
           </div>
@@ -421,7 +426,7 @@ function MenuItem({ onClick, children }: { onClick: () => void; children: ReactN
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-accent hover:text-accent-foreground"
+      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-start hover:bg-accent hover:text-accent-foreground"
     >
       {children}
     </button>

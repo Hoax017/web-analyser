@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { useT } from "@/i18n";
 import { errorMessage } from "@/lib/tauri";
 import { useGraphStore } from "@/stores/graphStore";
 import { useRequestListStore } from "@/stores/requestListStore";
@@ -27,6 +28,7 @@ function parsePatterns(text: string): string[] {
 
 /** Edits the display-only exclusion globs of a project, then reloads list and graph. */
 export function DisplayFilterDialog({ projectId }: { projectId: ProjectId }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<string[]>([]);
   const [text, setText] = useState("");
@@ -71,10 +73,10 @@ export function DisplayFilterDialog({ projectId }: { projectId: ProjectId }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" title="Filtres d'affichage" className="relative">
+        <Button variant="ghost" size="icon" title={t.filters.title} className="relative">
           <Filter />
           {active.length > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+            <span className="absolute -end-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
               {active.length}
             </span>
           )}
@@ -82,18 +84,17 @@ export function DisplayFilterDialog({ projectId }: { projectId: ProjectId }) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Filtres d'affichage</DialogTitle>
+          <DialogTitle>{t.filters.title}</DialogTitle>
           <DialogDescription>
-            Les requêtes correspondantes sont masquées de la liste et du graphe, mais restent enregistrées. Un motif
-            par ligne, testé sur le chemin et sur l'URL complète : <code>*</code> = n'importe quoi, <code>?</code> = un
-            caractère (sensible à la casse).
+            {t.filters.description} <code>*</code> {t.filters.wildcards} <code>?</code> {t.filters.singleChar}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="hidden-patterns">Motifs exclus</Label>
+          <Label htmlFor="hidden-patterns">{t.filters.patterns}</Label>
           <textarea
             id="hidden-patterns"
+            dir="ltr"
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={8}
@@ -112,7 +113,7 @@ export function DisplayFilterDialog({ projectId }: { projectId: ProjectId }) {
 
         <DialogFooter>
           <Button disabled={busy} onClick={() => void save()}>
-            Appliquer
+            {t.common.apply}
           </Button>
         </DialogFooter>
       </DialogContent>

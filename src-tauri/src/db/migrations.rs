@@ -87,7 +87,7 @@ pub fn run(conn: &mut Connection) -> AppResult<()> {
         tx.execute_batch(sql)?;
         tx.pragma_update(None, "user_version", (index + 1) as i64)?;
         tx.commit()?;
-        log::info!("migration v{} appliquée", index + 1);
+        log::info!("migration v{} applied", index + 1);
     }
     Ok(())
 }

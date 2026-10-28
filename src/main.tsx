@@ -7,7 +7,7 @@ import "./index.css";
 import { App } from "./App";
 
 const root = document.getElementById("root");
-if (!root) throw new Error("Élément #root introuvable");
+if (!root) throw new Error("Element #root not found");
 
 createRoot(root).render(
   <StrictMode>

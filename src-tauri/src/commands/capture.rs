@@ -4,7 +4,7 @@ use tauri::{AppHandle, State};
 
 use crate::capture::{browser, debug_profile_dir, CaptureState, CaptureStatus};
 use crate::db;
-use crate::error::{AppError, AppResult};
+use crate::error::{AppError, AppResult, Msg};
 use crate::state::AppState;
 
 /// Starts a capture with the browser configured in the settings
@@ -16,7 +16,7 @@ pub async fn start_capture(
     project_id: i64,
 ) -> AppResult<CaptureStatus> {
     if state.capture.status()?.state != CaptureState::Idle {
-        return Err(AppError::Capture("Une session de capture est déjà active".into()));
+        return Err(AppError::Capture(Msg::coded("captureAlreadyActive", "A capture session is already active")));
     }
     let db = Arc::clone(&state.db);
     let manager = state.capture.clone();

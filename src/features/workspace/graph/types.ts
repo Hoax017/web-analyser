@@ -8,7 +8,8 @@ export type RequestNodeData = {
   /** Every captured occurrence of this resource (same method + host + path). */
   memberIds: RequestId[];
 };
-export type UserNodeData = { label: string };
+/** The user node is labelled at render time, in the current UI language. */
+export type UserNodeData = Record<string, never>;
 export type DataFlowEdgeData = {
   /** Representative link (used by the editor). */
   link: Link;

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { BrowserSettingsDialog } from "@/features/settings/BrowserSettingsDialog";
+import { LanguageSelect } from "@/features/settings/LanguageSelect";
+import { messages, plural, useT } from "@/i18n";
 import { formatDate } from "@/lib/format";
 import { errorMessage } from "@/lib/tauri";
 import type { Project, ProjectId } from "@/types/domain";
@@ -13,6 +15,7 @@ import type { Project, ProjectId } from "@/types/domain";
 import { NewProjectDialog } from "./NewProjectDialog";
 
 export function HomePage({ onOpen }: { onOpen: (projectId: ProjectId) => void }) {
+  const t = useT();
   const [projects, setProjects] = useState<Project[] | null>(null);
 
   const refresh = useCallback(() => {
@@ -28,7 +31,8 @@ export function HomePage({ onOpen }: { onOpen: (projectId: ProjectId) => void })
   useEffect(refresh, [refresh]);
 
   const remove = async (project: Project) => {
-    if (!window.confirm(`Supprimer « ${project.name} » et ses ${project.requestCount} requêtes ?`)) return;
+    const m = messages();
+    if (!window.confirm(m.home.confirmDelete({ name: project.name, requests: plural(m.home.requestCount, project.requestCount) }))) return;
     try {
       await projectsApi.remove(project.id);
       refresh();
@@ -43,12 +47,13 @@ export function HomePage({ onOpen }: { onOpen: (projectId: ProjectId) => void })
         <Network className="size-7 text-primary" />
         <div className="flex-1">
           <h1 className="text-2xl font-semibold">Web Analyser</h1>
-          <p className="text-sm text-muted-foreground">Analyseur réseau visuel et intelligent</p>
+          <p className="text-sm text-muted-foreground">{t.home.tagline}</p>
         </div>
+        <LanguageSelect />
         <BrowserSettingsDialog
           trigger={
-            <Button variant="outline" title="Réglages du navigateur de capture">
-              <Settings /> Navigateur
+            <Button variant="outline" title={t.home.browserButtonTitle}>
+              <Settings /> {t.home.browserButton}
             </Button>
           }
         />
@@ -60,7 +65,7 @@ export function HomePage({ onOpen }: { onOpen: (projectId: ProjectId) => void })
       ) : projects.length === 0 ? (
         <Card className="flex flex-col items-center gap-2 p-10 text-center text-muted-foreground">
           <FolderOpen className="size-10 opacity-40" />
-          <p>Aucun projet. Créez-en un pour lancer votre première capture.</p>
+          <p>{t.home.empty}</p>
         </Card>
       ) : (
         <ul className="grid gap-3 overflow-y-auto sm:grid-cols-2">
@@ -75,15 +80,15 @@ export function HomePage({ onOpen }: { onOpen: (projectId: ProjectId) => void })
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{p.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{p.startUrl ?? "Sans URL de départ"}</p>
+                  <p className="truncate text-xs text-muted-foreground">{p.startUrl ?? t.home.noStartUrl}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {p.requestCount} requête(s) · modifié le {formatDate(p.updatedAt)}
+                    {t.home.projectMeta({ requests: plural(t.home.requestCount, p.requestCount), date: formatDate(p.updatedAt) })}
                   </p>
                 </div>
                 <Button
                   variant="ghost"
                   size="iconSm"
-                  aria-label="Supprimer le projet"
+                  aria-label={t.home.deleteProject}
                   className="opacity-0 group-hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();

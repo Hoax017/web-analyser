@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input, Select } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { valueTypeLabel } from "@/lib/format";
+import { messages, useT } from "@/i18n";
 import { errorMessage } from "@/lib/tauri";
 import { useGraphStore, type LinkEditorState } from "@/stores/graphStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -47,6 +48,7 @@ export function LinkEditorDialog() {
 }
 
 function LinkEditorForm({ editor, onDone }: { editor: LinkEditorState; onDone: () => void }) {
+  const t = useT();
   const projectId = useWorkspaceStore((s) => s.projectId);
   const requests = useGraphStore((s) => s.requests);
   const upsertLink = useGraphStore((s) => s.upsertLink);
@@ -64,7 +66,7 @@ function LinkEditorForm({ editor, onDone }: { editor: LinkEditorState; onDone: (
   const [busy, setBusy] = useState(false);
 
   const label = (id: RequestId | null): string => {
-    if (id === null) return "Utilisateur";
+    if (id === null) return t.graph.user;
     const r = requests.get(id);
     return r ? `${r.method} ${r.path}` : `#${id}`;
   };
@@ -89,7 +91,7 @@ function LinkEditorForm({ editor, onDone }: { editor: LinkEditorState; onDone: (
           ? await graphApi.updateLink(editor.link.id, cleaned)
           : await graphApi.createLink({ projectId, sourceRequestId: sourceId, targetRequestId: targetId, variables: cleaned });
       upsertLink(link);
-      toast.success(editor.mode === "edit" ? "Lien mis à jour" : "Lien créé");
+      toast.success(editor.mode === "edit" ? messages().linkEditor.updated : messages().linkEditor.created);
       onDone();
     } catch (error: unknown) {
       toast.error(errorMessage(error));
@@ -104,7 +106,7 @@ function LinkEditorForm({ editor, onDone }: { editor: LinkEditorState; onDone: (
     try {
       await graphApi.deleteLink(editor.link.id);
       removeLink(editor.link.id);
-      toast.success("Lien supprimé");
+      toast.success(messages().linkEditor.deleted);
       onDone();
     } catch (error: unknown) {
       toast.error(errorMessage(error));
@@ -116,17 +118,17 @@ function LinkEditorForm({ editor, onDone }: { editor: LinkEditorState; onDone: (
   return (
     <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-4">
       <DialogHeader>
-        <DialogTitle>{editor.mode === "edit" ? "Modifier le lien" : "Nouveau lien"}</DialogTitle>
-        <DialogDescription className="font-mono">
+        <DialogTitle>{editor.mode === "edit" ? t.linkEditor.editTitle : t.linkEditor.createTitle}</DialogTitle>
+        <DialogDescription dir="ltr" className="text-start font-mono">
           {label(sourceId)} → {label(targetId)}
         </DialogDescription>
       </DialogHeader>
 
-      <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto pr-1">
+      <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto pe-1">
         <div className="grid grid-cols-[1fr_1fr_130px_36px] gap-2 text-xs text-muted-foreground">
-          <span>Variable (source)</span>
-          <span>Nom côté cible</span>
-          <span>Type</span>
+          <span>{t.linkEditor.sourceVariable}</span>
+          <span>{t.linkEditor.targetName}</span>
+          <span>{t.linkEditor.type}</span>
           <span />
         </div>
         {variables.map((v, i) => (
@@ -154,7 +156,7 @@ function LinkEditorForm({ editor, onDone }: { editor: LinkEditorState; onDone: (
               type="button"
               variant="ghost"
               size="icon"
-              aria-label="Retirer la variable"
+              aria-label={t.linkEditor.removeVariable}
               disabled={variables.length === 1}
               onClick={() => setVariables((vs) => vs.filter((_, j) => j !== i))}
             >
@@ -162,7 +164,7 @@ function LinkEditorForm({ editor, onDone }: { editor: LinkEditorState; onDone: (
             </Button>
             {v.sample !== null && (
               <p className="col-span-4 -mt-1 truncate font-mono text-[11px] text-muted-foreground" title={v.sample}>
-                valeur observée : {v.sample}
+                {t.linkEditor.observed({ value: v.sample })}
               </p>
             )}
           </div>
@@ -174,24 +176,24 @@ function LinkEditorForm({ editor, onDone }: { editor: LinkEditorState; onDone: (
           className="self-start"
           onClick={() => setVariables((vs) => [...vs, emptyVariable(fromUser)])}
         >
-          <Plus /> Ajouter une variable
+          <Plus /> {t.linkEditor.addVariable}
         </Button>
       </div>
 
       <DialogFooter className="justify-between sm:justify-between">
         {editor.mode === "edit" ? (
           <Button type="button" variant="destructive" disabled={busy} onClick={() => void remove()}>
-            <Trash2 /> Supprimer le lien
+            <Trash2 /> {t.linkEditor.deleteLink}
           </Button>
         ) : (
           <span />
         )}
         <div className="flex gap-2">
           <Button type="button" variant="ghost" onClick={onDone}>
-            Annuler
+            {t.common.cancel}
           </Button>
           <Button type="submit" disabled={!valid || busy}>
-            Enregistrer
+            {t.common.save}
           </Button>
         </div>
       </DialogFooter>

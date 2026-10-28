@@ -3,6 +3,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { User } from "lucide-react";
 
 import { MethodLabel, StatusBadge } from "@/components/ui/badge";
+import { plural, useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 import { NODE_WIDTH, type RequestNodeType, type UserNodeType } from "./types";
@@ -10,11 +11,12 @@ import { NODE_WIDTH, type RequestNodeType, type UserNodeType } from "./types";
 const handleClass = "!size-2.5 !border-2 !border-background !bg-primary";
 
 export const RequestNode = memo(function RequestNode({ data, selected }: NodeProps<RequestNodeType>) {
+  const t = useT();
   const { request, memberIds } = data;
   return (
     <div
       style={{ width: NODE_WIDTH }}
-      title={memberIds.length > 1 ? `${request.url}\n${memberIds.length} occurrences` : request.url}
+      title={memberIds.length > 1 ? `${request.url}\n${plural(t.list.occurrences, memberIds.length)}` : request.url}
       className={cn(
         "graph-node-card relative rounded-lg border border-border bg-card px-3 py-2",
         selected && "is-selected",
@@ -26,7 +28,7 @@ export const RequestNode = memo(function RequestNode({ data, selected }: NodePro
         </span>
       )}
       <Handle type="target" position={Position.Top} className={handleClass} />
-      <div className="flex items-center gap-2">
+      <div dir="ltr" className="flex items-center gap-2">
         <MethodLabel method={request.method} />
         <span className="truncate font-mono text-sm">{request.path || "/"}</span>
       </div>
@@ -39,7 +41,8 @@ export const RequestNode = memo(function RequestNode({ data, selected }: NodePro
   );
 });
 
-export const UserNode = memo(function UserNode({ data, selected }: NodeProps<UserNodeType>) {
+export const UserNode = memo(function UserNode({ selected }: NodeProps<UserNodeType>) {
+  const t = useT();
   return (
     <div className="flex flex-col items-center gap-1">
       <div
@@ -50,7 +53,7 @@ export const UserNode = memo(function UserNode({ data, selected }: NodeProps<Use
       >
         <User className="size-6 text-sky-300" />
       </div>
-      <span className="text-xs text-muted-foreground">{data.label}</span>
+      <span className="text-xs text-muted-foreground">{t.graph.user}</span>
       <Handle type="source" position={Position.Bottom} className={handleClass} />
     </div>
   );

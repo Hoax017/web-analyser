@@ -1,3 +1,4 @@
+import { currentTag, messages } from "@/i18n";
 import type { DataLocation, ValueType } from "@/types/domain";
 
 export type StatusTone = "success" | "redirect" | "clientError" | "serverError" | "pending";
@@ -25,48 +26,61 @@ export function valueTypeLabel(type: ValueType): string {
   return VALUE_TYPE_LABELS[type];
 }
 
-const LOCATION_LABELS: Record<DataLocation, string> = {
-  responseBody: "corps de réponse",
-  responseHeader: "en-tête de réponse",
-  responseCookie: "cookie (Set-Cookie)",
-  requestBody: "corps de requête",
-  requestHeader: "en-tête",
-  requestCookie: "cookie",
-  requestQuery: "paramètre d'URL",
-  requestPath: "segment d'URL",
-  userInput: "saisie utilisateur",
-  unknown: "—",
-};
-
 export function locationLabel(location: DataLocation): string {
-  return LOCATION_LABELS[location];
+  return messages().location[location];
 }
 
-export function formatBytes(bytes: number | null): string {
-  if (bytes === null) return "—";
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+/** Formatters are cached per locale tag; they are rebuilt lazily after a language change. */
+function cached<T>(build: (tag: string) => T): () => T {
+  const cache = new Map<string, T>();
+  return () => {
+    const tag = currentTag();
+    let value = cache.get(tag);
+    if (value === undefined) {
+      value = build(tag);
+      cache.set(tag, value);
+    }
+    return value;
+  };
+}
+
+const unitFormatter = (unit: string, digits: number) =>
+  cached((tag) => new Intl.NumberFormat(tag, { style: "unit", unit, unitDisplay: "short", maximumFractionDigits: digits }));
+const bytes = unitFormatter("byte", 0);
+const kilobytes = unitFormatter("kilobyte", 1);
+const megabytes = unitFormatter("megabyte", 1);
+const milliseconds = unitFormatter("millisecond", 0);
+const seconds = unitFormatter("second", 2);
+
+export function formatBytes(size: number | null): string {
+  if (size === null) return "—";
+  if (size < 1024) return bytes().format(size);
+  if (size < 1024 * 1024) return kilobytes().format(size / 1024);
+  return megabytes().format(size / (1024 * 1024));
 }
 
 export function formatDuration(ms: number | null): string {
   if (ms === null) return "—";
-  return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(2)} s`;
+  return ms < 1000 ? milliseconds().format(Math.round(ms)) : seconds().format(ms / 1000);
 }
 
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
-const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
+const dateFormatter = cached((tag) => new Intl.DateTimeFormat(tag, { dateStyle: "medium", timeStyle: "short" }));
+const timeFormatter = cached(
+  (tag) => new Intl.DateTimeFormat(tag, { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+);
 
 export function formatDate(ms: number): string {
-  return dateFormatter.format(ms);
+  return dateFormatter().format(ms);
 }
 
 export function formatTime(ms: number): string {
-  return timeFormatter.format(ms);
+  return timeFormatter().format(ms);
+}
+
+const numberFormatter = cached((tag) => new Intl.NumberFormat(tag));
+
+export function formatNumber(value: number): string {
+  return numberFormatter().format(value);
 }
 
 /** Pretty-prints JSON when possible, otherwise returns the raw text. */

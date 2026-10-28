@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { create } from "zustand";
 
+import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 type ToastTone = "info" | "error" | "success";
@@ -45,8 +46,9 @@ const TONE_CLASSES: Record<ToastTone, string> = {
 export function Toaster() {
   const toasts = useToastStore((s) => s.toasts);
   const dismiss = useToastStore((s) => s.dismiss);
+  const closeLabel = useT().common.close;
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex w-96 flex-col gap-2">
+    <div className="pointer-events-none fixed bottom-4 end-4 z-[100] flex w-96 flex-col gap-2">
       {toasts.map((t) => (
         <div
           key={t.id}
@@ -57,7 +59,7 @@ export function Toaster() {
           )}
         >
           <p className="flex-1 break-words">{t.message}</p>
-          <button type="button" onClick={() => dismiss(t.id)} className="opacity-60 hover:opacity-100">
+          <button type="button" aria-label={closeLabel} onClick={() => dismiss(t.id)} className="opacity-60 hover:opacity-100">
             <X className="size-4" />
           </button>
         </div>

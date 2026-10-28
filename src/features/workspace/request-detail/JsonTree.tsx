@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, ChevronUp, S
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { plural, useT } from "@/i18n";
 import type { JsonPath, JsonSegment, JsonValue, PathFormat } from "@/lib/json";
 import { childCount, children, formatPath, isContainer, pathId, searchJson, valueAt } from "@/lib/json";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ interface TreeContext {
 
 /** Foldable JSON tree with search highlighting and click-to-copy access paths. */
 export function JsonTree({ value, toolbar }: { value: JsonValue; toolbar: ReactNode }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [depthLimit, setDepthLimit] = useState(DEFAULT_DEPTH);
@@ -88,7 +90,7 @@ export function JsonTree({ value, toolbar }: { value: JsonValue; toolbar: ReactN
       <div className="flex flex-wrap items-center gap-2">
         {toolbar}
         <div className="relative min-w-48 flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => changeQuery(e.target.value)}
@@ -96,14 +98,14 @@ export function JsonTree({ value, toolbar }: { value: JsonValue; toolbar: ReactN
               if (e.key === "Enter" && matchCount > 0) step(e.shiftKey ? -1 : 1);
               if (e.key === "Escape") changeQuery("");
             }}
-            placeholder="Rechercher une clé ou une valeur…"
-            className="h-8 pl-8 pr-8 text-xs"
+            placeholder={t.json.search}
+            className="h-8 ps-8 pe-8 text-xs"
           />
           {query && (
             <button
               type="button"
-              aria-label="Effacer"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={t.common.clear}
+              className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => changeQuery("")}
             >
               <X className="size-3.5" />
@@ -112,25 +114,25 @@ export function JsonTree({ value, toolbar }: { value: JsonValue; toolbar: ReactN
         </div>
         {deferredQuery.trim() !== "" && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <span className="tabular-nums">{matchCount === 0 ? "0 résultat" : `${current + 1}/${matchCount}`}</span>
-            <Button variant="ghost" size="iconSm" aria-label="Précédent" disabled={matchCount === 0} onClick={() => step(-1)}>
+            <span className="tabular-nums">{matchCount === 0 ? t.json.noResult : `${current + 1}/${matchCount}`}</span>
+            <Button variant="ghost" size="iconSm" aria-label={t.json.previous} disabled={matchCount === 0} onClick={() => step(-1)}>
               <ChevronUp />
             </Button>
-            <Button variant="ghost" size="iconSm" aria-label="Suivant" disabled={matchCount === 0} onClick={() => step(1)}>
+            <Button variant="ghost" size="iconSm" aria-label={t.json.next} disabled={matchCount === 0} onClick={() => step(1)}>
               <ChevronDown />
             </Button>
           </div>
         )}
-        <Button variant="ghost" size="iconSm" title="Tout déplier" onClick={() => foldAll(Number.POSITIVE_INFINITY)}>
+        <Button variant="ghost" size="iconSm" title={t.json.expandAll} onClick={() => foldAll(Number.POSITIVE_INFINITY)}>
           <ChevronsUpDown />
         </Button>
-        <Button variant="ghost" size="iconSm" title="Tout replier" onClick={() => foldAll(1)}>
+        <Button variant="ghost" size="iconSm" title={t.json.collapseAll} onClick={() => foldAll(1)}>
           <ChevronsDownUp />
         </Button>
       </div>
 
       <div className="flex min-h-9 items-center gap-2 rounded-md border border-border bg-card px-2 py-1 text-xs">
-        <span className="shrink-0 text-muted-foreground">Chemin</span>
+        <span className="shrink-0 text-muted-foreground">{t.json.path}</span>
         <div className="flex shrink-0 rounded border border-border">
           {PATH_FORMATS.map((f) => (
             <button
@@ -144,18 +146,18 @@ export function JsonTree({ value, toolbar }: { value: JsonValue; toolbar: ReactN
           ))}
         </div>
         {selected === null ? (
-          <span className="text-muted-foreground italic">Cliquez sur une clé ou une valeur</span>
+          <span className="text-muted-foreground italic">{t.json.clickHint}</span>
         ) : (
           <>
-            <code className="min-w-0 flex-1 truncate font-mono text-amber-200 select-text" title={selectedPath}>
+            <code dir="ltr" className="min-w-0 flex-1 truncate text-start font-mono text-amber-200 select-text" title={selectedPath}>
               {selectedPath}
             </code>
-            <span className="flex shrink-0 items-center text-muted-foreground" title="Copier le chemin">
+            <span className="flex shrink-0 items-center text-muted-foreground" title={t.json.copyPath}>
               <CopyButton text={selectedPath} />
             </span>
             {selectedValue !== undefined && (
-              <span className="flex shrink-0 items-center gap-0.5 text-muted-foreground" title="Copier la valeur">
-                valeur
+              <span className="flex shrink-0 items-center gap-0.5 text-muted-foreground" title={t.json.copyValue}>
+                {t.json.value}
                 <CopyButton text={typeof selectedValue === "string" ? selectedValue : JSON.stringify(selectedValue, null, 2)} />
               </span>
             )}
@@ -165,7 +167,8 @@ export function JsonTree({ value, toolbar }: { value: JsonValue; toolbar: ReactN
 
       <div
         ref={scroller}
-        className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/30 py-2 font-mono text-xs leading-relaxed"
+        dir="ltr"
+        className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/30 py-2 text-start font-mono text-xs leading-relaxed"
       >
         <JsonNode name={null} value={value} path={[]} depth={0} ctx={ctx} />
       </div>
@@ -186,6 +189,7 @@ const JsonNode = memo(function JsonNode({
   depth: number;
   ctx: TreeContext;
 }) {
+  const t = useT();
   const [limit, setLimit] = useState(CHILD_PAGE);
   const id = pathId(path);
   const container = isContainer(value);
@@ -209,7 +213,7 @@ const JsonNode = memo(function JsonNode({
         {container ? (
           <button
             type="button"
-            aria-label={open ? "Replier" : "Déplier"}
+            aria-label={open ? t.json.collapse : t.json.expand}
             className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground"
             onClick={() => ctx.toggle(id, !open)}
           >
@@ -240,7 +244,7 @@ const JsonNode = memo(function JsonNode({
               <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => ctx.toggle(id, true)}>
                 {openBracket}…{closeBracket}{" "}
                 <span className="text-[10px] italic">
-                  {count} {isArray ? (count > 1 ? "éléments" : "élément") : count > 1 ? "clés" : "clé"}
+                  {plural(isArray ? t.json.items : t.json.keys, count)}
                 </span>
               </button>
             )
@@ -263,7 +267,7 @@ const JsonNode = memo(function JsonNode({
               style={{ paddingLeft: (depth + 1) * INDENT_PX + 22 }}
               onClick={() => setLimit((l) => l + CHILD_PAGE)}
             >
-              Afficher {Math.min(CHILD_PAGE, entries.length - limit)} de plus ({entries.length - limit} restants)
+              {t.json.showMore({ more: Math.min(CHILD_PAGE, entries.length - limit), remaining: entries.length - limit })}
             </button>
           )}
           <div className="text-muted-foreground" style={{ paddingLeft: depth * INDENT_PX + 22 }}>

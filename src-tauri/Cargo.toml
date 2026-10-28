@@ -1,7 +1,7 @@
 [package]
 name = "web-analyser"
 version = "0.1.0"
-description = "Network Analyzer visuel et intelligent"
+description = "Visual and smart network analyser"
 edition = "2021"
 rust-version = "1.80"
 

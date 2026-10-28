@@ -4,6 +4,7 @@ import { Layers } from "lucide-react";
 import { requestsApi } from "@/api";
 import { StatusBadge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
+import { plural, useT } from "@/i18n";
 import { formatDate } from "@/lib/format";
 import { errorMessage } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ import { requestGroupKey, type RequestId, type RequestSummary } from "@/types/do
  * Switching tab only changes the displayed request id; the list keeps a single stack.
  */
 export function OccurrenceTabs({ requestId }: { requestId: RequestId }) {
+  const t = useT();
   const openRequest = useWorkspaceStore((s) => s.openRequest);
   const setSelectedGroup = useWorkspaceStore((s) => s.setSelectedGroup);
   const [occurrences, setOccurrences] = useState<RequestSummary[]>([]);
@@ -52,7 +54,7 @@ export function OccurrenceTabs({ requestId }: { requestId: RequestId }) {
   return (
     <div className="flex items-center gap-2 border-b border-border px-4 py-1.5">
       <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-        <Layers className="size-3.5" /> {occurrences.length} occurrences
+        <Layers className="size-3.5" /> {plural(t.list.occurrences, occurrences.length)}
       </span>
       <div role="tablist" className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-0.5">
         {[...occurrences].reverse().map((o) => {

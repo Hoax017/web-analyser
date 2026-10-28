@@ -6,6 +6,7 @@ import { Loader2, Pin } from "lucide-react";
 import { graphApi } from "@/api";
 import { MethodLabel, StatusBadge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
+import { messages, plural, useT } from "@/i18n";
 import { formatTime } from "@/lib/format";
 import { errorMessage } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ export function RequestList() {
       loadMore: s.loadMore,
     })),
   );
+  const t = useT();
   const selectedId = useWorkspaceStore((s) => (s.view.kind === "request" ? s.view.requestId : null));
   const selectedGroup = useWorkspaceStore((s) => s.selectedGroup);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -56,7 +58,7 @@ export function RequestList() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-3 py-2 text-xs text-muted-foreground">
-        <span>{query ? `${total} résultat(s)` : `${total} requête(s) distincte(s)`}</span>
+        <span>{plural(query ? t.list.results : t.list.distinct, total)}</span>
         {loading && <Loader2 className="size-3.5 animate-spin" />}
       </div>
       {error && <p className="px-3 py-2 text-xs text-red-400">{error}</p>}
@@ -69,7 +71,7 @@ export function RequestList() {
             return (
               <div
                 key={key}
-                className="absolute left-0 top-0 w-full px-2 pb-1 pt-2.5"
+                className="absolute start-0 top-0 w-full px-2 pb-1 pt-2.5"
                 style={{ height: row.size, transform: `translateY(${row.start}px)` }}
               >
                 <RequestListItem group={group} selected={selectedGroup === null ? group.id === selectedId : key === selectedGroup} />
@@ -79,7 +81,7 @@ export function RequestList() {
         </div>
         {!loading && items.length === 0 && (
           <p className="p-6 text-center text-sm text-muted-foreground">
-            {query ? "Aucune requête ne correspond à la recherche." : "Aucune requête capturée."}
+            {query ? t.list.noMatch : t.list.empty}
           </p>
         )}
       </div>
@@ -94,6 +96,7 @@ const RequestListItem = memo(function RequestListItem({
   group: RequestGroup;
   selected: boolean;
 }) {
+  const t = useT();
   const openRequest = useWorkspaceStore((s) => s.openRequest);
   // Latest occurrence: clicking opens it, tabs in the detail view list the others.
   const request = group;
@@ -103,7 +106,7 @@ const RequestListItem = memo(function RequestListItem({
     try {
       await graphApi.pin(request.projectId, request.id);
       useGraphStore.getState().pin(request);
-      toast.success("Requête ajoutée au graphique");
+      toast.success(messages().list.pinned);
     } catch (error: unknown) {
       toast.error(errorMessage(error));
     }
@@ -111,7 +114,7 @@ const RequestListItem = memo(function RequestListItem({
 
   return (
     // Space for two stacked layers is always reserved so that every row lines up.
-    <div className="relative h-full" style={{ paddingRight: STACK_OFFSET * 2, paddingBottom: STACK_OFFSET * 2 }}>
+    <div className="relative h-full" style={{ paddingInlineEnd: STACK_OFFSET * 2, paddingBottom: STACK_OFFSET * 2 }}>
       {Array.from({ length: depth }, (_, i) => {
         const shift = (depth - i) * STACK_OFFSET;
         return (
@@ -119,7 +122,7 @@ const RequestListItem = memo(function RequestListItem({
             key={shift}
             aria-hidden
             className="absolute rounded-md border border-border bg-card"
-            style={{ left: shift, top: shift, right: STACK_OFFSET * 2 - shift, bottom: STACK_OFFSET * 2 - shift }}
+            style={{ insetInlineStart: shift, top: shift, insetInlineEnd: STACK_OFFSET * 2 - shift, bottom: STACK_OFFSET * 2 - shift }}
           />
         );
       })}
@@ -128,7 +131,7 @@ const RequestListItem = memo(function RequestListItem({
         tabIndex={0}
         onClick={() => openRequest(request.id)}
         onKeyDown={(e) => e.key === "Enter" && openRequest(request.id)}
-        title={group.count > 1 ? `${request.url}\n${group.count} occurrences` : request.url}
+        title={group.count > 1 ? `${request.url}\n${plural(t.list.occurrences, group.count)}` : request.url}
         className={cn(
           "group relative flex h-full cursor-pointer flex-col justify-center gap-1 rounded-md border px-3 transition-colors",
           selected ? "border-primary bg-accent" : "border-border bg-card hover:bg-accent",
@@ -136,7 +139,7 @@ const RequestListItem = memo(function RequestListItem({
       >
         <div className="flex items-center gap-2">
           <MethodLabel method={request.method} />
-          <span className="min-w-0 flex-1 truncate font-mono text-sm">{request.path || "/"}</span>
+          <span dir="ltr" className="min-w-0 flex-1 truncate text-start font-mono text-sm">{request.path || "/"}</span>
           <StatusBadge status={request.status} failed={request.failed} />
         </div>
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -144,8 +147,8 @@ const RequestListItem = memo(function RequestListItem({
           <span className="tabular-nums">{formatTime(request.startedAt)}</span>
           <button
             type="button"
-            aria-label="Ajouter au graphique"
-            title="Ajouter au graphique"
+            aria-label={t.list.pin}
+            title={t.list.pin}
             onClick={(e) => {
               e.stopPropagation();
               void pin();
@@ -156,7 +159,7 @@ const RequestListItem = memo(function RequestListItem({
           </button>
         </div>
         {group.count > 1 && (
-          <span className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full bg-primary px-1.5 text-center text-[10px] font-semibold leading-5 text-primary-foreground tabular-nums shadow">
+          <span className="absolute -end-1.5 -top-1.5 min-w-5 rounded-full bg-primary px-1.5 text-center text-[10px] font-semibold leading-5 text-primary-foreground tabular-nums shadow">
             {group.count > 999 ? "999+" : group.count}
           </span>
         )}

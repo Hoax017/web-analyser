@@ -7,11 +7,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input, Label } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { BrowserSettingsDialog, browserModeLabel } from "@/features/settings/BrowserSettingsDialog";
+import { useT } from "@/i18n";
 import { errorMessage } from "@/lib/tauri";
 import type { BrowserSettings, Project } from "@/types/domain";
 
 /** Creates a project and immediately starts a capture session with the configured browser. */
 export function NewProjectDialog({ onCreated }: { onCreated: (project: Project) => void }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [startUrl, setStartUrl] = useState("https://");
@@ -51,34 +53,34 @@ export function NewProjectDialog({ onCreated }: { onCreated: (project: Project) 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus /> Nouveau projet
+          <Plus /> {t.newProject.button}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>Nouvelle analyse</DialogTitle>
-            <DialogDescription>Naviguez normalement dans Chrome : toutes les requêtes seront capturées.</DialogDescription>
+            <DialogTitle>{t.newProject.title}</DialogTitle>
+            <DialogDescription>{t.newProject.description}</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="project-name">Nom</Label>
-            <Input id="project-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Mon API" required autoFocus />
+            <Label htmlFor="project-name">{t.newProject.name}</Label>
+            <Input id="project-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t.newProject.namePlaceholder} required autoFocus />
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="start-url">URL de départ (optionnelle)</Label>
-            <Input id="start-url" value={startUrl} onChange={(e) => setStartUrl(e.target.value)} />
+            <Label htmlFor="start-url">{t.newProject.startUrl}</Label>
+            <Input id="start-url" dir="ltr" value={startUrl} onChange={(e) => setStartUrl(e.target.value)} />
           </div>
 
           <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
-            <span className="text-muted-foreground">Navigateur :</span>
-            <span className="min-w-0 flex-1 truncate">{browser === null ? "…" : browserModeLabel(browser)}</span>
+            <span className="text-muted-foreground">{t.newProject.browser}</span>
+            <span className="min-w-0 flex-1 truncate">{browser === null ? "…" : browserModeLabel(browser, t)}</span>
             <BrowserSettingsDialog
               onSaved={setBrowser}
               trigger={
                 <Button type="button" variant="ghost" size="sm">
-                  <Settings /> Modifier
+                  <Settings /> {t.common.edit}
                 </Button>
               }
             />
@@ -86,7 +88,7 @@ export function NewProjectDialog({ onCreated }: { onCreated: (project: Project) 
 
           <DialogFooter>
             <Button type="submit" disabled={busy || name.trim() === ""}>
-              {browser?.mode === "attach" ? "Créer et connecter mon Chrome" : "Créer et lancer la capture"}
+              {browser?.mode === "attach" ? t.newProject.submitAttach : t.newProject.submitManaged}
             </Button>
           </DialogFooter>
         </form>

@@ -1,6 +1,6 @@
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
-use crate::error::{AppError, AppResult};
+use crate::error::{AppError, AppResult, Msg};
 use crate::models::{now_ms, NewProject, Project};
 
 const SELECT_PROJECT: &str = "
@@ -28,13 +28,13 @@ pub fn list(conn: &Connection) -> AppResult<Vec<Project>> {
 pub fn get(conn: &Connection, id: i64) -> AppResult<Project> {
     conn.query_row(&format!("{SELECT_PROJECT} WHERE p.id = ?1"), [id], map_project)
         .optional()?
-        .ok_or_else(|| AppError::NotFound(format!("Projet {id} introuvable")))
+        .ok_or_else(|| AppError::NotFound(Msg::coded("projectNotFound", format!("Project {id} not found")).param("id", id)))
 }
 
 pub fn create(conn: &Connection, input: NewProject) -> AppResult<Project> {
     let name = input.name.trim();
     if name.is_empty() {
-        return Err(AppError::InvalidInput("Le nom du projet est requis".into()));
+        return Err(AppError::InvalidInput(Msg::coded("projectNameRequired", "The project name is required")));
     }
     let start_url = input
         .start_url
@@ -42,7 +42,9 @@ pub fn create(conn: &Connection, input: NewProject) -> AppResult<Project> {
         .filter(|u| !u.is_empty());
     if let Some(url) = &start_url {
         url::Url::parse(url)
-            .map_err(|e| AppError::InvalidInput(format!("URL de départ invalide : {e}")))?;
+            .map_err(|e| {
+                AppError::InvalidInput(Msg::coded("invalidStartUrl", format!("Invalid start URL: {e}")).param("error", e))
+            })?;
     }
     let now = now_ms();
     conn.execute(
@@ -61,7 +63,7 @@ pub fn delete(conn: &mut Connection, id: i64) -> AppResult<()> {
     )?;
     let affected = tx.execute("DELETE FROM projects WHERE id = ?1", [id])?;
     if affected == 0 {
-        return Err(AppError::NotFound(format!("Projet {id} introuvable")));
+        return Err(AppError::NotFound(Msg::coded("projectNotFound", format!("Project {id} not found")).param("id", id)));
     }
     tx.commit()?;
     Ok(())

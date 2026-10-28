@@ -78,7 +78,7 @@ export function deriveGraph(
       id: USER_NODE_ID,
       type: "user",
       position: { x: 0, y: 0 },
-      data: { label: "Utilisateur" },
+      data: {},
       deletable: false,
     });
   }

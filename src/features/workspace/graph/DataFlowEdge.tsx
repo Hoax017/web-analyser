@@ -3,6 +3,7 @@ import { BaseEdge, EdgeLabelRenderer, getBezierPath, useInternalNode, type EdgeP
 import { Eye } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { plural, useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { useGraphStore } from "@/stores/graphStore";
 
@@ -28,6 +29,7 @@ export const DataFlowEdge = memo(function DataFlowEdge({
   selected,
   data,
 }: EdgeProps<DataFlowEdgeType>) {
+  const t = useT();
   const openEditor = useGraphStore((s) => s.openEditor);
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
@@ -65,7 +67,7 @@ export const DataFlowEdge = memo(function DataFlowEdge({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  aria-label="Voir les variables transmises"
+                  aria-label={t.graph.showVariables}
                   onClick={() => openEditor({ mode: "edit", link })}
                   className={cn(
                     "grid size-7 place-items-center rounded-full border bg-background shadow transition-transform hover:scale-110",
@@ -78,8 +80,9 @@ export const DataFlowEdge = memo(function DataFlowEdge({
               <TooltipContent side="right">
                 <VariableList variables={data?.variables ?? link.variables} />
                 <p className="mt-2 border-t border-border pt-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {manual ? "Lien manuel" : "Détecté automatiquement"}
-                  {(data?.links.length ?? 1) > 1 ? ` · ${data?.links.length ?? 1} occurrences` : ""} · clic pour éditer
+                  {manual ? t.graph.manualLink : t.graph.autoLink}
+                  {(data?.links.length ?? 1) > 1 ? ` · ${plural(t.list.occurrences, data?.links.length ?? 1)}` : ""} ·{" "}
+                  {t.graph.clickToEdit}
                 </p>
               </TooltipContent>
             </Tooltip>

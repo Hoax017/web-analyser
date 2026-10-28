@@ -96,7 +96,7 @@ export class CaptureSession {
     const contexts = browser.contexts();
     for (const context of contexts) this.attach(context);
     browser.on("disconnected", () => void this.shutdown());
-    emit({ type: "ready", browserVersion: `Chrome connecté ${browser.version()}` });
+    emit({ type: "ready", browserVersion: browser.version() });
 
     const context = contexts[0];
     if (context) await this.openStartUrl(context, target.startUrl, true);
@@ -109,7 +109,7 @@ export class CaptureSession {
       const page = newTab ? await context.newPage() : (context.pages()[0] ?? (await context.newPage()));
       await page.goto(url);
     } catch (error: unknown) {
-      emit({ type: "error", message: `Navigation impossible : ${errorMessage(error)}` });
+      emit({ type: "error", message: `Navigation failed: ${errorMessage(error)}` });
     }
   }
 
@@ -119,7 +119,7 @@ export class CaptureSession {
     context.on("response", (response) => this.armFallback(response.request()));
     context.on("requestfinished", (request) => this.complete(request, null));
     context.on("requestfailed", (request) =>
-      this.complete(request, request.failure()?.errorText ?? "Échec inconnu"),
+      this.complete(request, request.failure()?.errorText ?? "Unknown failure"),
     );
   }
 
@@ -187,7 +187,7 @@ export class CaptureSession {
       };
       if (!this.paused) emit({ type: "exchange", data: exchange });
     } catch (error: unknown) {
-      emit({ type: "log", level: "warn", message: `Capture ignorée (${request.url()}) : ${errorMessage(error)}` });
+      emit({ type: "log", level: "warn", message: `Capture skipped (${request.url()}): ${errorMessage(error)}` });
     }
   }
 

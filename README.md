@@ -8,7 +8,9 @@ rebuilds the graph of data flows between requests (e.g. the `token` returned by 
 Stack: Tauri v2 (Rust + SQLite), React + strict TypeScript (no `any`, no `@ts-ignore`), Tailwind / shadcn/ui,
 React Flow, and a Playwright agent driving Chrome. All data stays local.
 
-> The app's user interface is currently in French; UI labels quoted below are followed by their English meaning.
+> The interface is available in the 10 most spoken languages (English, 中文, हिन्दी, Español, العربية, Français,
+> বাংলা, Português, Русский, اردو), selectable from the home page; Arabic and Urdu use a right-to-left layout.
+> Screenshots show the French UI.
 
 ![Workspace](docs/screenshots/workspace.png)
 
@@ -18,8 +20,8 @@ React Flow, and a Playwright agent driving Chrome. All data stays local.
 
   ![Home](docs/screenshots/home.png)
 
-- **Interactive graph**: infinite canvas (zoom, pan), layered or circular layout, re-centering, and « Voir à
-  partir de… » ("View from…", right click) to isolate a node and its descendants. Identical requests are merged
+- **Interactive graph**: infinite canvas (zoom, pan), layered or circular layout, re-centering, and "View from this
+  node" (right click) to isolate a node and its descendants. Identical requests are merged
   into a single node with a counter.
 - **Automatic correlation**: detects values (JWT tokens, IDs, UUIDs…) returned by a response and then reinjected
   into a later request (header, URL parameter, path segment, body). Hover a link's bubble to see the variables
@@ -28,7 +30,7 @@ React Flow, and a Playwright agent driving Chrome. All data stays local.
   ![Link tooltip](docs/screenshots/link-tooltip.png)
 
 - **Global search** across URLs, request values and response values (FTS5); matching nodes are highlighted, and
-  the « Filtrer le graphe » ("Filter graph") option hides the others.
+  the "Filter graph" option hides the others.
 
   ![Search](docs/screenshots/search.png)
 
@@ -74,7 +76,7 @@ npm run lint           # ESLint: `any` and `@ts-ignore` are forbidden
 cd src-tauri && cargo test
 ```
 
-Capture browser (« Navigateur » / "Browser" button on the home page, or the gear icon in the workspace), a global
+Capture browser ("Browser" button on the home page, or the gear icon in the workspace), a global
 setting stored in SQLite:
 
 - **Driven Chrome**: Playwright launches Chrome with a dedicated profile (default behaviour).

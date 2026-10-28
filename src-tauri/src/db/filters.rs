@@ -5,7 +5,7 @@ use std::collections::HashSet;
 
 use rusqlite::{params, Connection};
 
-use crate::error::{AppError, AppResult};
+use crate::error::{AppError, AppResult, Msg};
 
 const MAX_PATTERNS: usize = 100;
 const MAX_PATTERN_LEN: usize = 500;
@@ -30,10 +30,12 @@ pub fn replace(conn: &mut Connection, project_id: i64, patterns: &[String]) -> A
     cleaned.sort_unstable();
     cleaned.dedup();
     if cleaned.len() > MAX_PATTERNS {
-        return Err(AppError::InvalidInput(format!("{MAX_PATTERNS} motifs maximum")));
+        return Err(AppError::InvalidInput(
+            Msg::coded("tooManyPatterns", format!("{MAX_PATTERNS} patterns maximum")).param("max", MAX_PATTERNS),
+        ));
     }
     if let Some(p) = cleaned.iter().find(|p| p.len() > MAX_PATTERN_LEN) {
-        return Err(AppError::InvalidInput(format!("Motif trop long : {p}")));
+        return Err(AppError::InvalidInput(Msg::coded("patternTooLong", format!("Pattern too long: {p}")).param("pattern", p)));
     }
 
     let tx = conn.transaction()?;

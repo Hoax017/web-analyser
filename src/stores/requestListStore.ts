@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { requestsApi } from "@/api";
+import { errorMessage } from "@/lib/tauri";
 import { requestGroupKey, type ProjectId, type RequestGroup, type RequestSummary } from "@/types/domain";
 
 export const PAGE_SIZE = 200;
@@ -76,7 +77,7 @@ export const useRequestListStore = create<RequestListStore>((set, get) => ({
       });
     } catch (error: unknown) {
       if (get().generation !== generation) return;
-      set({ loading: false, error: error instanceof Error ? error.message : String(error) });
+      set({ loading: false, error: errorMessage(error) });
     }
   },
 

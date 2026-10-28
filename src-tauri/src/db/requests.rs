@@ -2,7 +2,7 @@ use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use crate::capture::protocol::CapturedExchange;
 use crate::correlation::ExchangeInput;
-use crate::error::{AppError, AppResult};
+use crate::error::{AppError, AppResult, Msg};
 use crate::models::{
     BodyEncoding, HttpHeader, QueryParam, RequestDetail, RequestGroup, RequestPage, RequestSummary,
 };
@@ -237,7 +237,9 @@ pub fn occurrences(conn: &Connection, request_id: i64) -> AppResult<Vec<RequestS
         .collect::<Result<Vec<_>, _>>()?;
     items.reverse();
     if items.is_empty() {
-        return Err(AppError::NotFound(format!("Requête {request_id} introuvable")));
+        return Err(AppError::NotFound(
+            Msg::coded("requestNotFound", format!("Request {request_id} not found")).param("id", request_id),
+        ));
     }
     Ok(items)
 }
@@ -267,7 +269,7 @@ pub fn get_detail(conn: &Connection, id: i64) -> AppResult<RequestDetail> {
             },
         )
         .optional()?
-        .ok_or_else(|| AppError::NotFound(format!("Requête {id} introuvable")))?;
+        .ok_or_else(|| AppError::NotFound(Msg::coded("requestNotFound", format!("Request {id} not found")).param("id", id)))?;
 
     let (summary, status_text, req_h, request_body, res_h, response_body, enc, size, failure) =
         detail;

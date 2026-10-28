@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use super::protocol::CaptureTarget;
-use crate::error::{AppError, AppResult};
+use crate::error::{AppError, AppResult, Msg};
 
 const DEFAULT_ENDPOINT: &str = "http://127.0.0.1:9222";
 const CONNECT_TIMEOUT: Duration = Duration::from_millis(800);
@@ -90,7 +90,13 @@ pub fn defaults(default_profile: &Path) -> BrowserDefaults {
 }
 
 fn parse_endpoint(raw: &str) -> AppResult<(Url, String, u16)> {
-    let invalid = || AppError::InvalidInput(format!("Endpoint CDP invalide : « {raw} » (ex. {DEFAULT_ENDPOINT})"));
+    let invalid = || {
+        AppError::InvalidInput(
+            Msg::coded("invalidCdpEndpoint", format!("Invalid CDP endpoint: \"{raw}\" (e.g. {DEFAULT_ENDPOINT})"))
+                .param("endpoint", raw)
+                .param("example", DEFAULT_ENDPOINT),
+        )
+    };
     let url = Url::parse(raw).map_err(|_| invalid())?;
     if !matches!(url.scheme(), "http" | "https" | "ws" | "wss") {
         return Err(invalid());
@@ -150,9 +156,14 @@ fn is_complete(raw: &[u8]) -> bool {
 pub fn probe(endpoint: &str) -> AppResult<String> {
     let (_, host, port) = parse_endpoint(endpoint)?;
     let unreachable = || {
-        AppError::Capture(format!(
-            "Aucun Chrome en mode débogage sur {host}:{port}. Lancez-le avec --remote-debugging-port={port}."
-        ))
+        AppError::Capture(
+            Msg::coded(
+                "chromeNotDebugging",
+                format!("No Chrome in debugging mode on {host}:{port}. Launch it with --remote-debugging-port={port}."),
+            )
+            .param("address", format!("{host}:{port}"))
+            .param("port", port),
+        )
     };
 
     let addrs = (host.as_str(), port).to_socket_addrs().map_err(|_| unreachable())?;
@@ -170,12 +181,18 @@ pub fn probe(endpoint: &str) -> AppResult<String> {
     let raw = read_http_response(&mut stream).map_err(|_| unreachable())?;
     let text = String::from_utf8_lossy(&raw);
     let (Some(start), Some(end)) = (text.find('{'), text.rfind('}')) else {
-        return Err(AppError::Capture(format!(
-            "{host}:{port} répond mais ce n'est pas un endpoint DevTools Chrome."
-        )));
+        return Err(AppError::Capture(
+            Msg::coded("notDevtoolsEndpoint", format!("{host}:{port} responds but is not a Chrome DevTools endpoint."))
+                .param("address", format!("{host}:{port}")),
+        ));
     };
     let info: VersionInfo = serde_json::from_str(&text[start..=end])
-        .map_err(|_| AppError::Capture(format!("Réponse DevTools illisible depuis {host}:{port}.")))?;
+        .map_err(|_| {
+            AppError::Capture(
+                Msg::coded("devtoolsUnreadable", format!("Unreadable DevTools response from {host}:{port}."))
+                    .param("address", format!("{host}:{port}")),
+            )
+        })?;
     Ok(info.browser)
 }
 
@@ -221,27 +238,37 @@ pub fn launch_debug_chrome(settings: &BrowserSettings, default_profile: &Path) -
     }
     let (_, host, port) = parse_endpoint(&settings.cdp_endpoint)?;
     if !is_loopback(&host) {
-        return Err(AppError::Capture(format!(
-            "Aucun Chrome joignable sur {host}:{port}. Le lancement automatique n'est possible que sur cette machine (localhost)."
-        )));
+        return Err(AppError::Capture(
+            Msg::coded(
+                "chromeUnreachableRemote",
+                format!("No Chrome reachable on {host}:{port}. Automatic launch only works on this machine (localhost)."),
+            )
+            .param("address", format!("{host}:{port}")),
+        ));
     }
 
     let chrome = match &settings.chrome_path {
         Some(path) => PathBuf::from(path),
         None => detect_chrome().ok_or_else(|| {
-            AppError::Capture("Google Chrome introuvable : indiquez son chemin dans les réglages du navigateur.".into())
+            AppError::Capture(Msg::coded(
+                "chromeNotFound",
+                "Google Chrome not found: set its path in the browser settings.",
+            ))
         })?,
     };
     if !chrome.is_file() {
-        return Err(AppError::Capture(format!("Exécutable Chrome introuvable : {}", chrome.display())));
+        return Err(AppError::Capture(
+            Msg::coded("chromeExecutableNotFound", format!("Chrome executable not found: {}", chrome.display()))
+                .param("path", chrome.display()),
+        ));
     }
 
     let profile = settings.profile_dir.as_ref().map_or_else(|| default_profile.to_path_buf(), PathBuf::from);
     if is_default_chrome_profile(&profile) {
-        return Err(AppError::Capture(
-            "Chrome refuse le mode débogage sur son profil par défaut (« User Data »). Choisissez un autre dossier de profil."
-                .into(),
-        ));
+        return Err(AppError::Capture(Msg::coded(
+            "chromeDefaultProfile",
+            "Chrome refuses debugging mode on its default profile (\"User Data\"). Choose another profile folder.",
+        )));
     }
     std::fs::create_dir_all(&profile)?;
 
@@ -253,7 +280,13 @@ pub fn launch_debug_chrome(settings: &BrowserSettings, default_profile: &Path) -
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .map_err(|e| AppError::Capture(format!("Lancement de Chrome impossible ({}) : {e}", chrome.display())))?;
+        .map_err(|e| {
+            AppError::Capture(
+                Msg::coded("chromeLaunchFailed", format!("Could not launch Chrome ({}): {e}", chrome.display()))
+                    .param("path", chrome.display())
+                    .param("error", &e),
+            )
+        })?;
     // Reap the process when the user closes it (avoids zombies on Unix).
     std::thread::spawn(move || {
         let _ = child.wait();
@@ -266,10 +299,17 @@ pub fn launch_debug_chrome(settings: &BrowserSettings, default_profile: &Path) -
             return Ok(version);
         }
     }
-    Err(AppError::Capture(format!(
-        "Chrome a démarré mais n'ouvre pas le port {port}. Fermez les fenêtres Chrome qui utilisent le profil « {} » puis réessayez.",
-        profile.display()
-    )))
+    Err(AppError::Capture(
+        Msg::coded(
+            "chromePortClosed",
+            format!(
+                "Chrome started but does not open port {port}. Close the Chrome windows using the profile \"{}\" and try again.",
+                profile.display()
+            ),
+        )
+        .param("port", port)
+        .param("profile", profile.display()),
+    ))
 }
 
 /// Turns the settings into what the agent needs, opening Chrome first if required.
@@ -327,7 +367,7 @@ mod tests {
 
     /// `WA_CDP_ENDPOINT=http://127.0.0.1:9222 cargo test -- --ignored probe_live`
     #[test]
-    #[ignore = "nécessite un Chrome lancé avec --remote-debugging-port"]
+    #[ignore = "needs a Chrome started with --remote-debugging-port"]
     fn probe_live() {
         let endpoint = std::env::var("WA_CDP_ENDPOINT").unwrap_or_else(|_| DEFAULT_ENDPOINT.into());
         let version = probe(&endpoint).unwrap();

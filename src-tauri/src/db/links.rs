@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use crate::correlation::DetectedLink;
-use crate::error::{AppError, AppResult};
+use crate::error::{AppError, AppResult, Msg};
 use crate::models::{now_ms, Link, LinkOrigin, LinkVariable, NewLink};
 
 const SELECT_LINK: &str = "SELECT id, project_id, source_request_id, target_request_id, origin, \
@@ -38,7 +38,7 @@ pub fn get(conn: &Connection, id: i64) -> AppResult<Link> {
     let raw = conn
         .query_row(&format!("{SELECT_LINK} WHERE id = ?1"), [id], map_link)
         .optional()?
-        .ok_or_else(|| AppError::NotFound(format!("Lien {id} introuvable")))?;
+        .ok_or_else(|| AppError::NotFound(Msg::coded("linkNotFound", format!("Link {id} not found")).param("id", id)))?;
     hydrate(raw)
 }
 
@@ -91,15 +91,16 @@ pub fn insert_detected(
 
 pub fn create_manual(conn: &Connection, input: &NewLink) -> AppResult<Link> {
     if input.source_request_id == Some(input.target_request_id) {
-        return Err(AppError::InvalidInput(
-            "Un lien ne peut pas relier une requête à elle-même".into(),
-        ));
+        return Err(AppError::InvalidInput(Msg::coded(
+            "linkToItself",
+            "A link cannot connect a request to itself",
+        )));
     }
     for id in input.source_request_id.iter().chain([input.target_request_id].iter()) {
         if !super::requests::exists_in_project(conn, input.project_id, *id)? {
-            return Err(AppError::InvalidInput(format!(
-                "La requête {id} n'appartient pas au projet"
-            )));
+            return Err(AppError::InvalidInput(
+                Msg::coded("requestNotInProject", format!("Request {id} does not belong to the project")).param("id", id),
+            ));
         }
     }
     insert(
@@ -119,7 +120,7 @@ pub fn update_variables(conn: &Connection, id: i64, variables: &[LinkVariable]) 
         params![id, serde_json::to_string(variables)?],
     )?;
     if affected == 0 {
-        return Err(AppError::NotFound(format!("Lien {id} introuvable")));
+        return Err(AppError::NotFound(Msg::coded("linkNotFound", format!("Link {id} not found")).param("id", id)));
     }
     get(conn, id)
 }
@@ -127,7 +128,7 @@ pub fn update_variables(conn: &Connection, id: i64, variables: &[LinkVariable]) 
 pub fn delete(conn: &Connection, id: i64) -> AppResult<()> {
     let affected = conn.execute("DELETE FROM links WHERE id = ?1", [id])?;
     if affected == 0 {
-        return Err(AppError::NotFound(format!("Lien {id} introuvable")));
+        return Err(AppError::NotFound(Msg::coded("linkNotFound", format!("Link {id} not found")).param("id", id)));
     }
     Ok(())
 }

@@ -14,7 +14,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::correlation::{CorrelationEngine, ExchangeInput};
 use crate::db::{self, Database};
-use crate::error::{AppError, AppResult};
+use crate::error::{AppError, AppResult, Msg};
 use crate::models::{BodyEncoding, Link, RequestSummary};
 use protocol::{AgentCommand, AgentConfig, AgentEvent, CaptureTarget, CapturedExchange};
 
@@ -89,17 +89,17 @@ pub struct CaptureManager {
 fn lock(session: &Mutex<Option<ActiveSession>>) -> AppResult<MutexGuard<'_, Option<ActiveSession>>> {
     session
         .lock()
-        .map_err(|_| AppError::Internal("verrou de session empoisonné".into()))
+        .map_err(|_| AppError::Internal("poisoned session lock".into()))
 }
 
 fn emit_status(app: &AppHandle, status: &CaptureStatus) {
     if let Err(e) = app.emit(EVENT_STATUS, status) {
-        log::warn!("émission du statut impossible : {e}");
+        log::warn!("could not emit status: {e}");
     }
 }
 
 fn emit_error(app: &AppHandle, project_id: Option<i64>, message: String) {
-    log::error!("capture : {message}");
+    log::error!("capture: {message}");
     let _ = app.emit(EVENT_ERROR, CaptureErrorEvent { project_id, message });
 }
 
@@ -120,9 +120,10 @@ fn resolve_agent_script(app: &AppHandle) -> AppResult<PathBuf> {
     if bundled.exists() {
         return Ok(bundled);
     }
-    Err(AppError::Capture(
-        "Agent de capture introuvable. Exécutez `npm run build:agent`.".into(),
-    ))
+    Err(AppError::Capture(Msg::coded(
+        "agentNotFound",
+        "Capture agent not found. Run `npm run build:agent`.",
+    )))
 }
 
 /// Profile folder used when the user's Chrome is opened by the app in debugging mode.
@@ -151,7 +152,7 @@ impl CaptureManager {
     ) -> AppResult<CaptureStatus> {
         let mut guard = lock(&self.session)?;
         if guard.is_some() {
-            return Err(AppError::Capture("Une session de capture est déjà active".into()));
+            return Err(AppError::Capture(Msg::coded("captureAlreadyActive", "A capture session is already active")));
         }
         // Validate project existence up-front for a clean error.
         db.with_conn(|c| db::projects::get(c, project_id))?;
@@ -176,15 +177,17 @@ impl CaptureManager {
 
         let mut child = command.spawn().map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                AppError::Capture(format!("Node.js introuvable (« {node} »). Installez Node ≥ 20."))
+                AppError::Capture(
+                    Msg::coded("nodeNotFound", format!("Node.js not found (\"{node}\"). Install Node ≥ 20.")).param("node", &node),
+                )
             } else {
                 AppError::Io(e)
             }
         })?;
 
-        let stdout = child.stdout.take().ok_or_else(|| AppError::Internal("stdout absent".into()))?;
-        let stderr = child.stderr.take().ok_or_else(|| AppError::Internal("stderr absent".into()))?;
-        let stdin = child.stdin.take().ok_or_else(|| AppError::Internal("stdin absent".into()))?;
+        let stdout = child.stdout.take().ok_or_else(|| AppError::Internal("missing stdout".into()))?;
+        let stderr = child.stderr.take().ok_or_else(|| AppError::Internal("missing stderr".into()))?;
+        let stdin = child.stdin.take().ok_or_else(|| AppError::Internal("missing stdin".into()))?;
 
         let mut session = ActiveSession {
             child,
@@ -230,7 +233,7 @@ impl CaptureManager {
             })
         });
         if let Err(e) = warmup {
-            emit_error(&app, Some(project_id), format!("Initialisation de la corrélation : {e}"));
+            emit_error(&app, Some(project_id), format!("Correlation warm-up failed: {e}"));
         }
 
         for line in BufReader::new(stdout).lines() {
@@ -238,7 +241,7 @@ impl CaptureManager {
                 Ok(l) if l.trim().is_empty() => continue,
                 Ok(l) => l,
                 Err(e) => {
-                    emit_error(&app, Some(project_id), format!("Lecture de l'agent : {e}"));
+                    emit_error(&app, Some(project_id), format!("Reading from the agent failed: {e}"));
                     break;
                 }
             };
@@ -263,7 +266,7 @@ impl CaptureManager {
                 Ok(AgentEvent::Log { level, message }) => log::info!("[agent:{level}] {message}"),
                 Ok(AgentEvent::Error { message }) => emit_error(&app, Some(project_id), message),
                 Ok(AgentEvent::Closed) => break,
-                Err(e) => log::warn!("message agent invalide ({e}) : {line}"),
+                Err(e) => log::warn!("invalid agent message ({e}): {line}"),
             }
         }
 
@@ -338,7 +341,7 @@ impl CaptureManager {
             let mut guard = lock(&self.session)?;
             let session = guard
                 .as_mut()
-                .ok_or_else(|| AppError::Capture("Aucune session de capture active".into()))?;
+                .ok_or_else(|| AppError::Capture(Msg::coded("noActiveCapture", "No active capture session")))?;
             session.send(&command)?;
             session.status.state = state;
             session.status.clone()

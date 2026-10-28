@@ -8,6 +8,9 @@ reconstruit le graphe des flux de données entre requêtes (ex. `token` de `/log
 Stack : Tauri v2 (Rust + SQLite), React + TypeScript strict (ni `any` ni `@ts-ignore`), Tailwind / shadcn/ui,
 React Flow, agent Playwright pilotant Chrome. Toutes les données restent en local.
 
+L'interface est disponible dans les 10 langues les plus parlées (English, 中文, हिन्दी, Español, العربية, Français,
+বাংলা, Português, Русский, اردو), au choix depuis la page d'accueil ; l'arabe et l'ourdou s'affichent de droite à gauche.
+
 ![Workspace](docs/screenshots/workspace.png)
 
 ## Fonctionnalités

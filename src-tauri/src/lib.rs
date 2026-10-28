@@ -58,7 +58,7 @@ pub fn run() {
             commands::settings::open_debug_browser,
         ])
         .build(tauri::generate_context!())
-        .expect("erreur lors de l'initialisation de Tauri");
+        .expect("error while initializing Tauri");
 
     app.run(|handle, event| {
         if let tauri::RunEvent::Exit = event {

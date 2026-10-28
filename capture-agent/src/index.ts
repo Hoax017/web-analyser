@@ -21,7 +21,7 @@ const input = createInterface({ input: process.stdin, crlfDelay: Infinity });
 input.on("line", (line) => {
   const command = parseCommand(line);
   if (command === null) {
-    process.stderr.write(`commande invalide ignorée : ${line}\n`);
+    process.stderr.write(`ignoring invalid command: ${line}\n`);
     return;
   }
   switch (command.type) {
@@ -30,7 +30,7 @@ input.on("line", (line) => {
       session = new CaptureSession(command.config);
       session.start().catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
-        fail(`Démarrage du navigateur impossible : ${message}`);
+        fail(`Could not start the browser: ${message}`);
       });
       break;
     case "pause":

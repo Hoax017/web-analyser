@@ -39,7 +39,7 @@ impl Database {
         let mut guard = self
             .conn
             .lock()
-            .map_err(|_| AppError::Internal("verrou base de données empoisonné".into()))?;
+            .map_err(|_| AppError::Internal("poisoned database lock".into()))?;
         f(&mut guard)
     }
 }

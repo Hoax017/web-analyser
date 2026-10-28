@@ -14,21 +14,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input, Label } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { messages, useT, type Messages } from "@/i18n";
 import { errorMessage } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import type { BrowserDefaults, BrowserMode, BrowserSettings } from "@/types/domain";
 
-const MODES: readonly { mode: BrowserMode; title: string; description: string }[] = [
-  {
-    mode: "managed",
-    title: "Chrome piloté",
-    description: "L'application lance Chrome via Playwright avec un profil dédié.",
-  },
-  {
-    mode: "attach",
-    title: "Mon vrai Chrome",
-    description: "Connexion à votre Chrome via le port de débogage (CDP), sans automatisation au lancement.",
-  },
+const MODES: readonly { mode: BrowserMode; title: (t: Messages) => string; description: (t: Messages) => string }[] = [
+  { mode: "managed", title: (t) => t.browser.managedTitle, description: (t) => t.browser.managedDescription },
+  { mode: "attach", title: (t) => t.browser.attachTitle, description: (t) => t.browser.attachDescription },
 ];
 
 type Probe =
@@ -45,8 +38,8 @@ function debugPort(endpoint: string): string {
   }
 }
 
-export function browserModeLabel(settings: BrowserSettings): string {
-  return settings.mode === "managed" ? "Chrome piloté (profil dédié)" : `Mon Chrome · ${settings.cdpEndpoint}`;
+export function browserModeLabel(settings: BrowserSettings, t: Messages): string {
+  return settings.mode === "managed" ? t.browser.managedLabel : t.browser.attachLabel({ endpoint: settings.cdpEndpoint });
 }
 
 /** Global browser configuration: managed Chrome vs. the user's own Chrome over CDP. */
@@ -57,6 +50,7 @@ export function BrowserSettingsDialog({
   trigger: ReactNode;
   onSaved?: (settings: BrowserSettings) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<BrowserSettings | null>(null);
   const [defaults, setDefaults] = useState<BrowserDefaults | null>(null);
@@ -96,7 +90,7 @@ export function BrowserSettingsDialog({
     setSaving(true);
     try {
       const saved = await settingsApi.saveBrowser(draft);
-      toast.success("Réglages du navigateur enregistrés");
+      toast.success(messages().browser.saved);
       onSaved?.(saved);
       setOpen(false);
     } catch (error: unknown) {
@@ -116,10 +110,8 @@ export function BrowserSettingsDialog({
       <DialogContent className="max-w-xl">
         <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>Navigateur de capture</DialogTitle>
-            <DialogDescription>
-              Utilisé pour toutes les captures (création de projet et « Reprendre l'analyse »).
-            </DialogDescription>
+            <DialogTitle>{t.browser.title}</DialogTitle>
+            <DialogDescription>{t.browser.description}</DialogDescription>
           </DialogHeader>
 
           {draft === null ? (
@@ -133,12 +125,12 @@ export function BrowserSettingsDialog({
                     type="button"
                     onClick={() => update({ mode: m.mode })}
                     className={cn(
-                      "rounded-md border p-3 text-left text-sm transition-colors",
+                      "rounded-md border p-3 text-start text-sm transition-colors",
                       draft.mode === m.mode ? "border-primary bg-accent" : "border-border hover:bg-accent/50",
                     )}
                   >
-                    <p className="font-medium">{m.title}</p>
-                    <p className="text-xs text-muted-foreground">{m.description}</p>
+                    <p className="font-medium">{m.title(t)}</p>
+                    <p className="text-xs text-muted-foreground">{m.description(t)}</p>
                   </button>
                 ))}
               </div>
@@ -146,9 +138,10 @@ export function BrowserSettingsDialog({
               {draft.mode === "attach" && (
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="cdp-endpoint">Endpoint CDP</Label>
+                    <Label htmlFor="cdp-endpoint">{t.browser.cdpEndpoint}</Label>
                     <Input
                       id="cdp-endpoint"
+                      dir="ltr"
                       value={draft.cdpEndpoint}
                       onChange={(e) => update({ cdpEndpoint: e.target.value })}
                       placeholder="http://127.0.0.1:9222"
@@ -163,52 +156,49 @@ export function BrowserSettingsDialog({
                       onChange={(e) => update({ autoLaunch: e.target.checked })}
                     />
                     <span>
-                      Ouvrir Chrome automatiquement en mode débogage s'il n'écoute pas déjà
-                      <span className="block text-xs text-muted-foreground">
-                        Sinon, lancez-le vous-même avec la commande ci-dessous.
-                      </span>
+                      {t.browser.autoLaunch}
+                      <span className="block text-xs text-muted-foreground">{t.browser.autoLaunchHint}</span>
                     </span>
                   </label>
 
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="chrome-path">Exécutable Chrome</Label>
+                    <Label htmlFor="chrome-path">{t.browser.chromePath}</Label>
                     <Input
                       id="chrome-path"
+                      dir="ltr"
                       value={draft.chromePath ?? ""}
                       onChange={(e) => update({ chromePath: e.target.value || null })}
-                      placeholder={defaults?.chromePath ?? "Introuvable : indiquez le chemin de chrome.exe"}
+                      placeholder={defaults?.chromePath ?? t.browser.chromePathPlaceholder}
                     />
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="profile-dir">Dossier de profil</Label>
+                    <Label htmlFor="profile-dir">{t.browser.profileDir}</Label>
                     <Input
                       id="profile-dir"
+                      dir="ltr"
                       value={draft.profileDir ?? ""}
                       onChange={(e) => update({ profileDir: e.target.value || null })}
                       placeholder={defaults?.profileDir ?? ""}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Sessions, cookies et extensions y sont conservés d'une capture à l'autre. Chrome (≥ 136) refuse le
-                      débogage sur son profil par défaut « User Data » : utilisez un dossier dédié.
-                    </p>
+                    <p className="text-xs text-muted-foreground">{t.browser.profileHint}</p>
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label>Lancement manuel</Label>
+                    <Label>{t.browser.manualLaunch}</Label>
                     <div className="flex items-center gap-1 rounded-md border border-border bg-muted/40 p-2">
-                      <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-muted-foreground">
+                      <code dir="ltr" className="min-w-0 flex-1 break-all font-mono text-[11px] text-muted-foreground">
                         {manualCommand}
                       </code>
                       <Button
                         type="button"
                         variant="ghost"
                         size="iconSm"
-                        title="Copier"
+                        title={t.common.copy}
                         onClick={() =>
                           void navigator.clipboard
                             .writeText(manualCommand)
-                            .then(() => toast.info("Commande copiée"))
+                            .then(() => toast.info(messages().browser.commandCopied))
                             .catch((error: unknown) => toast.error(errorMessage(error)))
                         }
                       >
@@ -225,17 +215,17 @@ export function BrowserSettingsDialog({
                       disabled={probe.state === "busy"}
                       onClick={() => void runProbe(() => settingsApi.testConnection(draft.cdpEndpoint))}
                     >
-                      <PlugZap /> Tester la connexion
+                      <PlugZap /> {t.browser.testConnection}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       disabled={probe.state === "busy"}
-                      title="Pratique pour vous connecter aux sites avant de lancer la capture"
+                      title={t.browser.openNowTitle}
                       onClick={() => void runProbe(() => settingsApi.openDebugBrowser(draft))}
                     >
-                      <Rocket /> Ouvrir Chrome maintenant
+                      <Rocket /> {t.browser.openNow}
                     </Button>
                     <ProbeResult probe={probe} />
                   </div>
@@ -246,7 +236,7 @@ export function BrowserSettingsDialog({
 
           <DialogFooter>
             <Button type="submit" disabled={saving || draft === null}>
-              {saving ? <Loader2 className="animate-spin" /> : <Save />} Enregistrer
+              {saving ? <Loader2 className="animate-spin" /> : <Save />} {t.common.save}
             </Button>
           </DialogFooter>
         </form>
@@ -256,6 +246,7 @@ export function BrowserSettingsDialog({
 }
 
 function ProbeResult({ probe }: { probe: Probe }) {
+  const t = useT();
   switch (probe.state) {
     case "idle":
       return null;
@@ -264,7 +255,7 @@ function ProbeResult({ probe }: { probe: Probe }) {
     case "ok":
       return (
         <span className="flex items-center gap-1 text-xs text-emerald-400">
-          <CheckCircle2 className="size-4" /> {probe.version}
+          <CheckCircle2 className="size-4" /> {t.browser.connected({ version: probe.version })}
         </span>
       );
     case "error":

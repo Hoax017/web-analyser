@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
 import { formatBytes, prettyBody } from "@/lib/format";
 import { parseJson } from "@/lib/json";
 import { cn } from "@/lib/utils";
@@ -14,13 +15,14 @@ import { JsonTree } from "./JsonTree";
 const PREVIEW_LIMIT = 200_000;
 
 export function CopyButton({ text }: { text: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   return (
     <Button
       type="button"
       variant="ghost"
       size="iconSm"
-      aria-label="Copier"
+      aria-label={t.common.copy}
       onClick={() => {
         void navigator.clipboard.writeText(text).then(() => {
           setCopied(true);
@@ -49,7 +51,7 @@ export function KeyValueTable({ rows, empty }: { rows: readonly (HttpHeader | Qu
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
   return (
     <div className="overflow-hidden rounded-md border border-border">
-      <table className="w-full table-fixed text-sm">
+      <table dir="ltr" className="w-full table-fixed text-sm">
         <tbody>
           {rows.map((row, i) => (
             <tr key={`${row.name}-${i}`} className="border-b border-border last:border-0 odd:bg-muted/30">
@@ -74,6 +76,7 @@ export function BodyViewer({
   mimeType: string | null;
   size: number | null;
 }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<"tree" | "raw">("tree");
   const json = useMemo(() => (body !== null && encoding === "utf8" ? parseJson(body) : undefined), [body, encoding]);
@@ -85,16 +88,20 @@ export function BodyViewer({
   if (body === null || encoding === "none") {
     return (
       <p className="text-sm text-muted-foreground">
-        {size !== null ? `Corps non conservé (${formatBytes(size)})` : "Aucun corps"}
+        {size !== null ? t.detail.bodyNotKept({ size: formatBytes(size) }) : t.detail.noBody}
       </p>
     );
   }
 
   if (encoding === "base64") {
     if (mimeType?.startsWith("image/")) {
-      return <img alt="Aperçu" className="max-h-96 rounded border border-border" src={`data:${mimeType};base64,${body}`} />;
+      return <img alt={t.detail.preview} className="max-h-96 rounded border border-border" src={`data:${mimeType};base64,${body}`} />;
     }
-    return <p className="text-sm text-muted-foreground">Contenu binaire ({mimeType ?? "type inconnu"}, {formatBytes(size)})</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        {t.detail.binary({ mime: mimeType ?? t.detail.unknownType, size: formatBytes(size) })}
+      </p>
+    );
   }
 
   const text = formatted ?? body;
@@ -108,7 +115,7 @@ export function BodyViewer({
             className={cn("px-2 py-1", mode === m ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}
             onClick={() => setMode(m)}
           >
-            {m === "tree" ? "Arbre" : "Brut"}
+            {m === "tree" ? t.detail.tree : t.detail.raw}
           </button>
         ))}
       </div>
@@ -122,15 +129,15 @@ export function BodyViewer({
     <div className="flex flex-col gap-2">
       {modeToggle && <div className="flex">{modeToggle}</div>}
       <div className="relative">
-        <div className="absolute right-2 top-2">
+        <div className="absolute end-2 top-2">
           <CopyButton text={text} />
         </div>
-        <pre className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/30 p-3 pr-10 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all select-text">
+        <pre dir="ltr" className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/30 p-3 pe-10 text-start font-mono text-xs leading-relaxed whitespace-pre-wrap break-all select-text">
           {truncated ? text.slice(0, PREVIEW_LIMIT) : text}
         </pre>
         {truncated && (
           <Button variant="link" size="sm" className="mt-1" onClick={() => setExpanded(true)}>
-            Afficher tout ({formatBytes(text.length)})
+            {t.detail.showAll({ size: formatBytes(text.length) })}
           </Button>
         )}
       </div>
